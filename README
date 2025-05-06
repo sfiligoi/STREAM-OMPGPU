@@ -6,6 +6,9 @@ for measuring sustained memory bandwidth.
 Documentation for STREAM is on the web at:
    http://www.cs.virginia.edu/stream/ref.html
 
+This fork adds support for GPU computing
+through the use of OpenMP Target pragmas.
+
 ===============================================
 NEWS
 ===============================================
