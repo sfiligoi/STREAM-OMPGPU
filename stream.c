@@ -40,6 +40,13 @@
 /*     program constitutes acceptance of these licensing restrictions.   */
 /*  5. Absolutely no warranty is expressed or implied.                   */
 /*-----------------------------------------------------------------------*/
+#ifdef OMPGPU
+#ifdef OMPGPU_UNIFIED
+#pragma omp requires unified_address
+#pragma omp requires unified_shared_memory
+#endif
+#endif
+
 # include <stdio.h>
 # include <unistd.h>
 # include <stdlib.h>
@@ -92,7 +99,7 @@
  *          per array.
  */
 #ifndef STREAM_ARRAY_SIZE
-#   define STREAM_ARRAY_SIZE	10000000l
+#   define STREAM_ARRAY_SIZE	1000000000l
 #endif
 
 /*  2) STREAM runs each kernel "NTIMES" times and reports the *best* result
@@ -219,6 +226,13 @@ main()
     b= calloc((STREAM_ARRAY_SIZE+OFFSET),sizeof(STREAM_TYPE));
     c= calloc((STREAM_ARRAY_SIZE+OFFSET),sizeof(STREAM_TYPE));
 
+#ifdef OMPGPU
+#ifndef OMPGPU_UNIFIED
+#pragma omp target enter data map(to:a[0:(STREAM_ARRAY_SIZE+OFFSET)])
+#pragma omp target enter data map(to:b[0:(STREAM_ARRAY_SIZE+OFFSET)])
+#pragma omp target enter data map(to:c[0:(STREAM_ARRAY_SIZE+OFFSET)])
+#endif
+#endif
     /* --- SETUP --- determine precision and check timing --- */
 
     printf(HLINE);
@@ -250,6 +264,9 @@ main()
 
 #ifdef _OPENMP
     printf(HLINE);
+#ifdef OMPGPU
+    printf ("Using accelerator\n");
+#else
 #pragma omp parallel 
     {
 #pragma omp master
@@ -259,7 +276,9 @@ main()
         }
     }
 #endif
+#endif
 
+#ifndef OMPGPU
 #ifdef _OPENMP
 	k = 0;
 #pragma omp parallel
@@ -267,9 +286,14 @@ main()
 		k++;
     printf ("Number of Threads counted = %i\n",k);
 #endif
+#endif
 
     /* Get initial value for system clock. */
+#ifdef OMPGPU
+#pragma omp target teams distribute parallel for map(tofrom:a[0:(STREAM_ARRAY_SIZE+OFFSET)],b[0:(STREAM_ARRAY_SIZE+OFFSET)],c[0:(STREAM_ARRAY_SIZE+OFFSET)])
+#else
 #pragma omp parallel for
+#endif
     for (j=0; j<STREAM_ARRAY_SIZE; j++) {
 	    a[j] = 1.0;
 	    b[j] = 2.0;
@@ -288,7 +312,11 @@ main()
     }
 
     t = mysecond();
+#ifdef OMPGPU
+#pragma omp target teams distribute parallel for map(tofrom:a[0:(STREAM_ARRAY_SIZE+OFFSET)])
+#else
 #pragma omp parallel for
+#endif
     for (j = 0; j < STREAM_ARRAY_SIZE; j++)
 		a[j] = 2.0E0 * a[j];
     t = 1.0E6 * (mysecond() - t);
@@ -315,7 +343,11 @@ main()
 #ifdef TUNED
         tuned_STREAM_Copy();
 #else
+#ifdef OMPGPU
+#pragma omp target teams distribute parallel for map(tofrom:a[0:(STREAM_ARRAY_SIZE+OFFSET)],c[0:(STREAM_ARRAY_SIZE+OFFSET)])
+#else
 #pragma omp parallel for
+#endif
 	for (j=0; j<STREAM_ARRAY_SIZE; j++)
 	    c[j] = a[j];
 #endif
@@ -325,7 +357,11 @@ main()
 #ifdef TUNED
         tuned_STREAM_Scale(scalar);
 #else
+#ifdef OMPGPU
+#pragma omp target teams distribute parallel for map(tofrom:b[0:(STREAM_ARRAY_SIZE+OFFSET)],c[0:(STREAM_ARRAY_SIZE+OFFSET)])
+#else
 #pragma omp parallel for
+#endif
 	for (j=0; j<STREAM_ARRAY_SIZE; j++)
 	    b[j] = scalar*c[j];
 #endif
@@ -335,7 +371,11 @@ main()
 #ifdef TUNED
         tuned_STREAM_Add();
 #else
+#ifdef OMPGPU
+#pragma omp target teams distribute parallel for map(tofrom:a[0:(STREAM_ARRAY_SIZE+OFFSET)],b[0:(STREAM_ARRAY_SIZE+OFFSET)],c[0:(STREAM_ARRAY_SIZE+OFFSET)])
+#else
 #pragma omp parallel for
+#endif
 	for (j=0; j<STREAM_ARRAY_SIZE; j++)
 	    c[j] = a[j]+b[j];
 #endif
@@ -345,7 +385,11 @@ main()
 #ifdef TUNED
         tuned_STREAM_Triad(scalar);
 #else
+#ifdef OMPGPU
+#pragma omp target teams distribute parallel for map(tofrom:a[0:(STREAM_ARRAY_SIZE+OFFSET)],b[0:(STREAM_ARRAY_SIZE+OFFSET)],c[0:(STREAM_ARRAY_SIZE+OFFSET)])
+#else
 #pragma omp parallel for
+#endif
 	for (j=0; j<STREAM_ARRAY_SIZE; j++)
 	    a[j] = b[j]+scalar*c[j];
 #endif
@@ -376,6 +420,13 @@ main()
     }
     printf(HLINE);
 
+#ifdef OMPGPU
+#ifndef OMPGPU_UNIFIED
+#pragma omp target exit data map(from:a[0:(STREAM_ARRAY_SIZE+OFFSET)])
+#pragma omp target exit data map(from:b[0:(STREAM_ARRAY_SIZE+OFFSET)])
+#pragma omp target exit data map(from:c[0:(STREAM_ARRAY_SIZE+OFFSET)])
+#endif
+#endif
     /* --- Check Results --- */
     checkSTREAMresults();
     printf(HLINE);
