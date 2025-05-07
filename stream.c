@@ -42,6 +42,7 @@
 /*-----------------------------------------------------------------------*/
 # include <stdio.h>
 # include <unistd.h>
+# include <stdlib.h>
 # include <math.h>
 # include <float.h>
 # include <limits.h>
@@ -91,7 +92,7 @@
  *          per array.
  */
 #ifndef STREAM_ARRAY_SIZE
-#   define STREAM_ARRAY_SIZE	10000000
+#   define STREAM_ARRAY_SIZE	10000000l
 #endif
 
 /*  2) STREAM runs each kernel "NTIMES" times and reports the *best* result
@@ -176,9 +177,9 @@
 #define STREAM_TYPE double
 #endif
 
-static STREAM_TYPE	a[STREAM_ARRAY_SIZE+OFFSET],
-			b[STREAM_ARRAY_SIZE+OFFSET],
-			c[STREAM_ARRAY_SIZE+OFFSET];
+static STREAM_TYPE*	a = NULL;
+static STREAM_TYPE*	b = NULL;
+static STREAM_TYPE*	c = NULL;
 
 static double	avgtime[4] = {0}, maxtime[4] = {0},
 		mintime[4] = {FLT_MAX,FLT_MAX,FLT_MAX,FLT_MAX};
@@ -213,6 +214,10 @@ main()
     ssize_t		j;
     STREAM_TYPE		scalar;
     double		t, times[4][NTIMES];
+
+    a= calloc((STREAM_ARRAY_SIZE+OFFSET),sizeof(STREAM_TYPE));
+    b= calloc((STREAM_ARRAY_SIZE+OFFSET),sizeof(STREAM_TYPE));
+    c= calloc((STREAM_ARRAY_SIZE+OFFSET),sizeof(STREAM_TYPE));
 
     /* --- SETUP --- determine precision and check timing --- */
 
